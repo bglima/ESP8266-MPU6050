@@ -8,10 +8,17 @@
 #include "espressif/esp_common.h"
 #include "esp/uart.h"
 #include "FreeRTOS.h"
+#include <i2c/i2c.h>
 #include "task.h"
 #include "queue.h"
 #include "esp8266.h"
 #include "bma2x2.h"
+
+/* I2C definitions  */
+#define I2C_BUS 0
+#define SCL_PIN 5
+#define SDA_PIN 4
+#define ADDR 0x68
 
 /* pin config */
 const int gpio = 0;   /* gpio 0 usually has "PROGRAM" button attached */
@@ -75,10 +82,34 @@ void gpio_intr_handler(uint8_t gpio_num)
     xQueueSendToBackFromISR(tsqueue, &now, NULL);
 }
 
+uint8_t read_reg_mpu(uint8_t reg){
+	i2c_start(I2C_BUS);
+	bool acked = i2c_write(I2C_BUS, ADDR);
+	if( acked ) {
+		printf("Byte was acked.\n");
+	} else {
+		printf("Byte was not acked.\n");
+	}
+	i2c_stop(I2C_BUS);		
+}
+
 void user_init(void)
 {
+     
     uart_set_baud(0, 115200);
     gpio_enable(gpio, GPIO_INPUT);
+
+    int conn = i2c_init(I2C_BUS, SCL_PIN, SDA_PIN, I2C_FREQ_100K);
+    if( !conn ) {
+	printf("Starting I2C connection.\n");
+    } else {
+	printf("Connection not started. Check the pins.\n");
+    }
+
+    read_reg_mpu(0);
+    
+
+ 
 
     tsqueue = xQueueCreate(2, sizeof(uint32_t));
     xTaskCreate(buttonIntTask, "buttonIntTask", 256, &tsqueue, 2, NULL);
