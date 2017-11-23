@@ -17,4 +17,5 @@ Felipe Carmo Crispim
 
 [Yet another I2C driver for the ESP8266](https://github.com/SuperHouse/esp-open-rtos/tree/master/extras/i2c)
 
+[Accelerometer to G unit](http://ozzmaker.com/accelerometer-to-g/)
 
