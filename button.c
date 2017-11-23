@@ -80,16 +80,17 @@ void gpio_intr_handler(uint8_t gpio_num)
 /* I2C definitions  */
 // 5 e 4
 // 0 e 2
-#define I2C_BUS 0
 #define ADDR 0x68
-#define WHO_I_AM     0x75 // decimal 117
-#define AM_I_SLEEP   0x6B // decimal 107
 #define SCL_PIN (5)
 #define SDA_PIN (4)
+#define WHO_I_AM     0x75 // decimal 117
+#define PWR_MGMT_1   0x6B // decimal 107. SLEEP
+#define GYRO_CONFIG  0x1B // decimal 27
+#define ACCEL_CONFIG 0x1C // decimal 28
+#define ACCEL_XOUT_H 0x3B // decimal 59
 
 uint8_t init_MPU(){
-
-    int regs[] = {107,0x1B,0x1C};
+    int regs[] = {PWR_MGMT_1, GYRO_CONFIG, ACCEL_CONFIG};
     for (int i=0;i<3;i++) {
         uint8_t data[] = {regs[i], 0};
         i2c_slave_write(ADDR, data, sizeof(data));
@@ -103,10 +104,11 @@ void check_MPU() {
     if ( reg_data == 0x68 ) {
         printf("MPU6050 is allright! Everything is fine!\n");
     } else {
-        printf("MPU6050 is allright! Everything is fine!\n");
+        printf("MPU not found!\n");
+        return;
     }
 
-    i2c_slave_read(ADDR, AM_I_SLEEP, &reg_data, 1);
+    i2c_slave_read(ADDR, PWR_MGMT_1, &reg_data, 1);
     if ( reg_data == 0x64 ) {
         printf("MPU6050 is in SLEEP mode!\n");
     } else {
@@ -115,52 +117,42 @@ void check_MPU() {
 
 }
 
+void getMotion() {
+    uint8_t buffer[14];
+    i2c_slave_read(ADDR, ACCEL_XOUT_H, buffer, 14);
+    int16_t ax = (((int16_t)buffer[0]) << 8) | buffer[1];
+    int16_t ay = (((int16_t)buffer[2]) << 8) | buffer[3];
+    int16_t az = (((int16_t)buffer[4]) << 8) | buffer[5];
+    int16_t gx = (((int16_t)buffer[8]) << 8) | buffer[9];
+    int16_t gy = (((int16_t)buffer[10]) << 8) | buffer[11];
+    int16_t gz = (((int16_t)buffer[12]) << 8) | buffer[13];
+    printf("Acceleration..: x: %d, y: %d, z: %d\n", ax, ay, az);
+    printf("Gyro..........: x: %d, y: %d, z: %d\n\n", gx, gy, gz);
+
+}
+
+void getMotionTask(void *pvParameters)
+{
+    while(1) {
+        getMotion();
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
+
 void user_init(void)
 {
      
     uart_set_baud(0, 115200);
     gpio_enable(gpio, GPIO_INPUT);
 
-    uint8_t slave_addr = 0x68;  // MPU address
-    uint8_t reg_addr = 0x107;   //
-    uint8_t data[] = {reg_addr, 0};
-
     i2c_init(SCL_PIN, SDA_PIN);
-    bool success = i2c_slave_write(slave_addr, data, sizeof(data));
-    if (success)
-    {
-        printf("YAY!\n");
-    } else {
-        printf("AFF :(\n");
-    }
-
     init_MPU();
     check_MPU();
-
- 
-//	// Requisitando dados
-//	i2c_start(I2C_BUS);
-//	i2c_write(I2C_BUS, ADDR);
-//	i2c_write(I2C_BUS, 0x3B);
-//	// Lendo dados
-//	i2c_start(I2C_BUS);
-//	i2c_write(I2C_BUS, ADDR);
-//	uint8_t data = i2c_read(I2C_BUS, true);
-//	printf("Data read: %x\n", data);
-//	i2c_stop(I2C_BUS);
-
-//	// WHO I AM
-//	i2c_start(I2C_BUS);
-//	i2c_write(I2C_BUS, ADDR);
-//	i2c_write(I2C_BUS, WHO_I_AM);
-//	i2c_start(I2C_BUS);
-//	uint8_t who = i2c_read(I2C_BUS, true);
-//	i2c_stop(I2C_BUS);
-//	printf("Data WHO: %x\n", who);
-	
 
 
     tsqueue = xQueueCreate(2, sizeof(uint32_t));
     xTaskCreate(buttonIntTask, "buttonIntTask", 256, &tsqueue, 2, NULL);
     xTaskCreate(buttonPollTask, "buttonPollTask", 256, NULL, 1, NULL);
+    xTaskCreate(getMotionTask, "getMotionTask", 256, NULL, 1, NULL);
 }
