@@ -12,7 +12,9 @@ Felipe Carmo Crispim
 ## References: 
 
 [MPU6050 com ESP8266 (GY-521)](http://www.dobitaobyte.com.br/mpu6050-com-esp8266-gy-521/)
+
 [MPU6050 module I2C Drive](http://www.esp8266-projects.com/2015/12/mailbag-mpu6050-module-i2c-driver-init.html/)
+
 [Yet another I2C driver for the ESP8266](https://github.com/SuperHouse/esp-open-rtos/tree/master/extras/i2c)
-[
+
 
