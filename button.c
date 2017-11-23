@@ -12,7 +12,6 @@
 #include "task.h"
 #include "queue.h"
 #include "esp8266.h"
-#include "bma2x2.h"
 
 /* pin config */
 const int gpio = 0;   /* gpio 0 usually has "PROGRAM" button attached */
@@ -117,6 +116,8 @@ void check_MPU() {
 
 }
 
+
+
 void getMotion() {
     uint8_t buffer[14];
     i2c_slave_read(ADDR, ACCEL_XOUT_H, buffer, 14);
@@ -126,8 +127,8 @@ void getMotion() {
     int16_t gx = (((int16_t)buffer[8]) << 8) | buffer[9];
     int16_t gy = (((int16_t)buffer[10]) << 8) | buffer[11];
     int16_t gz = (((int16_t)buffer[12]) << 8) | buffer[13];
-    printf("Acceleration..: x: %d, y: %d, z: %d\n", ax / ((int16_t)2048.0), ay / ((int16_t)2048.0), az / ((int16_t)2048.0));
-    printf("Gyro..........: x: %d, y: %d, z: %d\n\n", gx, gy, gz);
+    printf("Acceleration..: x: %.2f, y: %.2f, z: %.2f\n", ax * 0.061 * 9.80665 / 1000.0, ay * 0.061 * 9.80665 / 1000.0, az * 0.061 * 9.80665 / 1000.0);
+//    printf("Gyro..........: x: %f, y: %f, z: %f\n\n", gx, gy, gz);
 
 }
 
