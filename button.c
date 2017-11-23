@@ -126,7 +126,7 @@ void getMotion() {
     int16_t gx = (((int16_t)buffer[8]) << 8) | buffer[9];
     int16_t gy = (((int16_t)buffer[10]) << 8) | buffer[11];
     int16_t gz = (((int16_t)buffer[12]) << 8) | buffer[13];
-    printf("Acceleration..: x: %d, y: %d, z: %d\n", ax, ay, az);
+    printf("Acceleration..: x: %d, y: %d, z: %d\n", ax / ((int16_t)2048.0), ay / ((int16_t)2048.0), az / ((int16_t)2048.0));
     printf("Gyro..........: x: %d, y: %d, z: %d\n\n", gx, gy, gz);
 
 }
