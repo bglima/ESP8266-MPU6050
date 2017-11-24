@@ -6,7 +6,9 @@ EXTRA_COMPONENTS = extras/i2c
 # Bruno's PC
 # Remember to alter path:
 # export PATH=$PATH:/home/brunolima/Projetos/SE/esp-open-sdk/xtensa-lx106-elf/bin
-include ../esp-open-rtos/common.mk
+#include ../esp-open-rtos/common.mk
+
 # 
 # Felipe's PC 
 #
+include ../common.mk
