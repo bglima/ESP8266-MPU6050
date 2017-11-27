@@ -2,6 +2,7 @@
 #define MPU5060_HEADER
 
 #include "stdint.h"
+#include "stdio.h"
 #include "i2c.h"
 
 /* General definitions */
@@ -19,14 +20,36 @@
 #define GYROSCOPE_SENSITIVITY 131.0
 #define dt 0.01     // 10 ms sample rate!
 
-struct MPU6050 {
-   uint8_t dataBuffer[14];
-   int16_t accelData[3];
-   int16_t gyroData[3];
-};
+typedef union
+{
+    uint8_t buffer[14];         // Accessing the whole buffer
 
-struct MPU6050* create_dev(void); /* Create a new instance of accelerometer as struct */
+    struct                      // Accessing each value individually
+    {
+        int16_t accel_x : 16;
+        int16_t accel_y : 16;
+        int16_t accel_z : 16;
+        int16_t temp : 16;
+        int16_t gyro_x : 16;
+        int16_t gyro_y : 16;
+        int16_t gyro_z : 16;
+    } value;
+
+    struct                      // Acessing them as vectors
+    {
+        int16_t accel[3];
+        int16_t temp;
+        int16_t gyro[3];
+    } vec;
+
+} mpu_data_t;
+
+static mpu_data_t mpu_data;
+
 bool init_mpu(); /* Wake MPU and setup GYRO and ACCEL */
+uint8_t check_mpu(); /* Reads WHO_I_AM register from MPU and checks whether it is in SLEEP mode */
+bool read_values(); /* Reads dev data and fill mpu_data buffer. Returns success of operation */
+void print_values(); /* Print values in screen */
 
 
 #endif

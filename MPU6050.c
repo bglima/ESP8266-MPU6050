@@ -1,32 +1,98 @@
 #include "MPU6050.h"
 
+/*
+ * Init MPU5060 and configure ACCELL and GYRO data.
+ * Return true if sucessfuly configured
+ *
+ */
 bool init_mpu(){
-    int regs[] = {PWR_MGMT_1, GYRO_CONFIG, ACCEL_CONFIG, FIFO_R_W};
+    int regs[] = {PWR_MGMT_1, GYRO_CONFIG, ACCEL_CONFIG};
     bool success = false;
+    i2c_init(SCL_PIN, SDA_PIN);
     for (int i=0;i<3;i++) {
         uint8_t data[] = {regs[i], 0};  // Set each reg to zero
         success = i2c_slave_write(ADDR, data, sizeof(data));
-        if ( !success ) return false;
+        if (!success) return success;     // If any of registers does not respond, cancel request and return false
     }
-    return true;
+    return success;
 }
 
-//void check_MPU() {
-//    uint8_t reg_data = -1;
-//    i2c_slave_read(ADDR, WHO_I_AM, &reg_data, 1);
-//    if ( reg_data == 0x68 ) {
-//        printf("MPU6050 is allright! Everything is fine!\n");
-//    } else {
-//        printf("MPU not found!\n");
-//        return;
-//    }
+/*
+ * Check if MPU responds its address and then check if it's asleep.
+ * Returns MPU state: 0 = active
+ *                    1 = sleeping
+ *                    2 = not found
+ */
+uint8_t check_mpu() {
+    uint8_t reg_data = -1;
 
-//    i2c_slave_read(ADDR, PWR_MGMT_1, &reg_data, 1);
-//    if ( reg_data == 0x64 ) {
-//        printf("MPU6050 is in SLEEP mode!\n");
-//    } else {
-//        printf("MPU6050 is ACTIVE.\n");
-//    }
+    // Read WHO_I_AM register
+    i2c_slave_read(ADDR, WHO_I_AM, &reg_data, 1);
+    if ( reg_data != 0x68 ) // Wrong address, not found
+        return 2;
+
+    // Read PWR_MGMT_1 register
+    i2c_slave_read(ADDR, PWR_MGMT_1, &reg_data, 1);
+    if ( reg_data == 0x64 ) // in SLEEP mode
+        return 1;
+
+    // If it reaches here, MPU is active
+    return 0;
+}
+
+/*
+ * Read values and store them in mpu_data buffer.
+ * Returns true if data was read successfully
+ *
+ */
+bool read_values() {
+      uint8_t buffer[14];
+
+      if( check_mpu() ) // If return 0, MPU is active
+          return false;
+
+      bool ok = i2c_slave_read(ADDR, ACCEL_XOUT_H, buffer, 14);
+      if( !ok )
+          return false;
+
+      printf("Accel X from inside: %d\n", (((int16_t)buffer[0]) << 8) | buffer[1]);
+      mpu_data.value.accel_x = (((int16_t)buffer[0]) << 8) | buffer[1];
+      mpu_data.value.accel_y = (((int16_t)buffer[2]) << 8) | buffer[3];
+      mpu_data.value.accel_z = (((int16_t)buffer[4]) << 8) | buffer[5];
+      mpu_data.value.temp = (((int16_t)buffer[6]) << 8) | buffer[7];
+      mpu_data.value.gyro_x = (((int16_t)buffer[8]) << 8) | buffer[9];
+      mpu_data.value.gyro_y = (((int16_t)buffer[10]) << 8) | buffer[11];
+      mpu_data.value.gyro_z = (((int16_t)buffer[12]) << 8) | buffer[13];
+
+      return true;
+}
+
+/*
+ * Prints out all the data in mpu_data buffer.
+ *
+ */
+void print_values() {
+    printf("--> Values read from MPU5060 and stored in mpu_data: <--\n");
+    printf("Accel X.....: %d \n", mpu_data.value.accel_x);
+    printf("Accel Y.....: %d \n", mpu_data.value.accel_y);
+    printf("Accel Z.....: %d \n", mpu_data.value.accel_z);
+    printf("Gyro X......: %d \n", mpu_data.value.gyro_x);
+    printf("Gyro Y......: %d \n", mpu_data.value.gyro_y);
+    printf("Gyro Z......: %d \n", mpu_data.value.gyro_z);
+    printf("Temprature..: %d \n", mpu_data.value.temp);
+    printf("\n");
+}
+
+
+
+
+//    float pitch=0, roll=0;
+
+//    ComplementaryFilter(accData, gyrData, &pitch, &roll);
+
+//    printf("pitch: %f, roll: %f \n", pitch, roll);
+//    // printf("Acceleration..: x: %.2f, y: %.2f, z: %.2f\n", ax * 0.061 * 9.80665 / 1000.0, ay * 0.061 * 9.80665 / 1000.0, az * 0.061 * 9.80665 / 1000.0);
+//   // printf("Gyro..........: x: %d, y: %d, z: %d\n\n", gx, gy, gz);
 
 //}
 
@@ -76,23 +142,3 @@ bool init_mpu(){
 
 //}
 
-//void getMotion() {
-//    uint8_t buffer[14];
-
-//    i2c_slave_read(ADDR, ACCEL_XOUT_H, buffer, 14);
-//    accData[0] = (((int16_t)buffer[0]) << 8) | buffer[1];
-//    accData[1] = (((int16_t)buffer[2]) << 8) | buffer[3];
-//    accData[2] = (((int16_t)buffer[4]) << 8) | buffer[5];
-//    gyrData[0] = (((int16_t)buffer[8]) << 8) | buffer[9];
-//    gyrData[1] = (((int16_t)buffer[10]) << 8) | buffer[11];
-//    gyrData[2] = (((int16_t)buffer[12]) << 8) | buffer[13];
-
-//    float pitch=0, roll=0;
-
-//    ComplementaryFilter(accData, gyrData, &pitch, &roll);
-
-//    printf("pitch: %f, roll: %f \n", pitch, roll);
-//    // printf("Acceleration..: x: %.2f, y: %.2f, z: %.2f\n", ax * 0.061 * 9.80665 / 1000.0, ay * 0.061 * 9.80665 / 1000.0, az * 0.061 * 9.80665 / 1000.0);
-//   // printf("Gyro..........: x: %d, y: %d, z: %d\n\n", gx, gy, gz);
-
-//}

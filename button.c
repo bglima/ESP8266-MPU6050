@@ -73,18 +73,37 @@ void user_init(void)
     uart_set_baud(0, 115200);
     gpio_enable(gpio, GPIO_INPUT);
 
+    // Init MPU
     bool connected = init_mpu();
     if ( connected ) {
         printf("MPU is ok!\n");
     } else {
         printf("Connection failure!\n");
+        return;
     }
 
-//    i2c_init(SCL_PIN, SDA_PIN);
-//    init_MPU();
-//    check_MPU();
-//    // getAccelAndGravity();
+    // Check MPU status
+    uint8_t status = check_mpu();
+    switch ( status ) {
+    case 0:
+        printf("Lock and loaded! MPU is active!\n");
+        break;
+    case 1:
+        printf("MPU connected, but it's taking a nap! Zzzz....\n");
+        break;
+    case 2:
+        printf("MPU was not found or not initiated! Check connections.\n");
+        break;
+    }
 
+    // Get data values
+    bool ok = read_values();
+    if ( !ok )
+        printf("Data was not read!\n");
+    else {
+        printf("Data was read successfully.\n");
+        print_values();
+    }
 
 //    tsqueue = xQueueCreate(2, sizeof(uint32_t));
 //    xTaskCreate(buttonIntTask, "buttonIntTask", 256, &tsqueue, 2, NULL);
