@@ -14,7 +14,15 @@ bool init_mpu(){
         success = i2c_slave_write(ADDR, data, sizeof(data));
         if (!success) return success;     // If any of registers does not respond, cancel request and return false
     }
+
+    for(int i=0; i < 3; ++i) {
+        accel[i] = 0;
+        gyro[i] = 0;
+    }
+    temp = 0;
+
     return success;
+
 }
 
 /*
@@ -56,14 +64,24 @@ bool read_values() {
           return false;
 
       printf("Accel X from inside: %d\n", (((int16_t)buffer[0]) << 8) | buffer[1]);
-      mpu_data.value.accel_x = (((int16_t)buffer[0]) << 8) | buffer[1];
-      mpu_data.value.accel_y = (((int16_t)buffer[2]) << 8) | buffer[3];
-      mpu_data.value.accel_z = (((int16_t)buffer[4]) << 8) | buffer[5];
-      mpu_data.value.temp = (((int16_t)buffer[6]) << 8) | buffer[7];
-      mpu_data.value.gyro_x = (((int16_t)buffer[8]) << 8) | buffer[9];
-      mpu_data.value.gyro_y = (((int16_t)buffer[10]) << 8) | buffer[11];
-      mpu_data.value.gyro_z = (((int16_t)buffer[12]) << 8) | buffer[13];
+      mpu_raw_data.value.accel_x = (((int16_t)buffer[0]) << 8) | buffer[1];
+      mpu_raw_data.value.accel_y = (((int16_t)buffer[2]) << 8) | buffer[3];
+      mpu_raw_data.value.accel_z = (((int16_t)buffer[4]) << 8) | buffer[5];
+      mpu_raw_data.value.temp = (((int16_t)buffer[6]) << 8) | buffer[7];
+      mpu_raw_data.value.gyro_x = (((int16_t)buffer[8]) << 8) | buffer[9];
+      mpu_raw_data.value.gyro_y = (((int16_t)buffer[10]) << 8) | buffer[11];
+      mpu_raw_data.value.gyro_z = (((int16_t)buffer[12]) << 8) | buffer[13];
 
+      float accel_factor = GRAVITY / ACCELEROMETER_SENSITIVITY;
+      float gyro_factor = 1 / GYROSCOPE_SENSITIVITY;
+      float temp_factor = 1 / TEMPERATURE_SENSIVITY;
+      accel[0] = mpu_raw_data.value.accel_x * accel_factor;
+      accel[1] = mpu_raw_data.value.accel_y * accel_factor;
+      accel[2] = mpu_raw_data.value.accel_z * accel_factor;
+      temp = mpu_raw_data.value.temp * temp_factor + 36.53;
+      gyro[0] = mpu_raw_data.value.gyro_x * gyro_factor;
+      gyro[1] = mpu_raw_data.value.gyro_y * gyro_factor;
+      gyro[2] = mpu_raw_data.value.gyro_z * gyro_factor;
       return true;
 }
 
@@ -73,18 +91,26 @@ bool read_values() {
  */
 void print_values() {
     printf("--> Values read from MPU5060 and stored in mpu_data: <--\n");
-    printf("Accel X.....: %d \n", mpu_data.value.accel_x);
-    printf("Accel Y.....: %d \n", mpu_data.value.accel_y);
-    printf("Accel Z.....: %d \n", mpu_data.value.accel_z);
-    printf("Gyro X......: %d \n", mpu_data.value.gyro_x);
-    printf("Gyro Y......: %d \n", mpu_data.value.gyro_y);
-    printf("Gyro Z......: %d \n", mpu_data.value.gyro_z);
-    printf("Temprature..: %d \n", mpu_data.value.temp);
+    printf("Accel X.....: %f \n", accel[0]);
+    printf("Accel Y.....: %f \n", accel[1]);
+    printf("Accel Z.....: %f \n", accel[2]);
+    printf("Gyro X......: %f \n", gyro[0]);
+    printf("Gyro Y......: %f \n", gyro[1]);
+    printf("Gyro Z......: %f \n", gyro[2]);
+    printf("Temprature..: %f \n", temp);
     printf("\n");
 }
 
 
 
+/* Write values to an extern buffer, so data user can use it
+ *
+ */
+void get_data_buffer(uint8_t *buffer)
+{
+    for(int i = 0; i < 14; ++i)
+        buffer[i] = mpu_raw_data.buffer[i];
+}
 
 //    float pitch=0, roll=0;
 
@@ -141,4 +167,6 @@ void print_values() {
 //    }
 
 //}
+
+
 

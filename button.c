@@ -105,6 +105,10 @@ void user_init(void)
         print_values();
     }
 
+    // Writing data values to an extern buffer (as we are encapsulating it)
+    uint8_t dataBuffer[14];
+    get_data_buffer(dataBuffer);
+
 //    tsqueue = xQueueCreate(2, sizeof(uint32_t));
 //    xTaskCreate(buttonIntTask, "buttonIntTask", 256, &tsqueue, 2, NULL);
 //    xTaskCreate(buttonPollTask, "buttonPollTask", 256, NULL, 1, NULL);

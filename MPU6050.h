@@ -16,8 +16,10 @@
 #define ACCEL_XOUT_H 0x3B // decimal 59
 #define FIFO_R_W 0x74     // decimal 116
 #define FIFO_COUNTH   0x72
+#define GRAVITY 9.826
 #define ACCELEROMETER_SENSITIVITY 16384.0
 #define GYROSCOPE_SENSITIVITY 131.0
+#define TEMPERATURE_SENSIVITY 340.0
 #define dt 0.01     // 10 ms sample rate!
 
 typedef union
@@ -44,12 +46,22 @@ typedef union
 
 } mpu_data_t;
 
-static mpu_data_t mpu_data;
+static mpu_data_t mpu_raw_data;
+static float accel[3];
+static float gyro[3];
+static float temp;
+static float vel[3];
+static float dis[3];
 
+// Basic read functions
 bool init_mpu(); /* Wake MPU and setup GYRO and ACCEL */
 uint8_t check_mpu(); /* Reads WHO_I_AM register from MPU and checks whether it is in SLEEP mode */
 bool read_values(); /* Reads dev data and fill mpu_data buffer. Returns success of operation */
 void print_values(); /* Print values in screen */
+void get_data_buffer(uint8_t *buffer); /* Write data to an external buffer */
 
+// Integration functions
+void reset_ref(); /* Reseting references for integration */
+void step(); /* Execute a step and updates velocity and distance from referente. Implies read_values() execution */
 
 #endif
