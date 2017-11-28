@@ -14,18 +14,14 @@ void init_mpu(){
         if (!success) return;     // If any of registers does not respond, cancel request
     }
 
-    for(int i=0; i < 3; ++i) {
-        accel[i] = 0;
-        gyro[i] = 0;
-        last_accel[i] = 0;
-        last_gyro[i] = 0;
-    }
-    temp = 0;
-    dt = 0.1;
-    pitch = 0;
-    roll = 0;
-    reset_ref();
+    read_values();
 
+    for(int i=0; i < 3; ++i) {
+        filter_accel[i] = accel[i];
+        last_accel[i] = accel[i];
+        last_gyro[i] = accel[i];
+    }
+    dt = 0.1;
 }
 
 /*
@@ -92,30 +88,44 @@ bool read_values() {
  *
  */
 void print_values() {
-    printf("--> Values read from MPU5060 and stored in mpu_data: <--\n");
-    printf("Accel X (m/s^2).....: %f \n", accel[0]);
-    printf("Accel Y (m/s^2).....: %f \n", accel[1]);
-    printf("Accel Z (m/s^2).....: %f \n", accel[2]);
-    printf("Gyro X (deg/s)......: %f \n", gyro[0]);
-    printf("Gyro Y (deg/s)......: %f \n", gyro[1]);
-    printf("Gyro Z (deg/s)......: %f \n", gyro[2]);
-    printf("Temprature (Celsius)..: %f \n", temp);
-    printf("\n");
-    printf("Vel X (m/s).....: %f \n", vel[0]);
-    printf("Vel Y (m/s).....: %f \n", vel[1]);
-    printf("Vel Z (m/s).....: %f \n", vel[2]);
-    printf("\n");
-    printf("Dis X (m).....: %f \n", dis[0]);
-    printf("Dis Y (m).....: %f \n", dis[1]);
-    printf("Dis Z (m).....: %f \n", dis[2]);
+    printf("\n--> Printing MPU5060 read values: <--\n");
+    printf("Accel (m/s^2) X: %.2f; Y:%.2f; Z:%.2f\n", accel[0], accel[1], accel[2]);
+    printf("FAccel(m/s^2) X: %.2f; Y:%.2f; Z:%.2f\n", filter_accel[0], filter_accel[1], filter_accel[2]);
+    printf("Gyro  (m/s^2) X: %.2f; Y:%.2f; Z:%.2f\n", gyro[0], gyro[1], gyro[2]);
+    printf("Temp  (Celsius): %f \n", temp);
+    printf("Vel   (m/s^2) X: %.2f; Y:%.2f; Z:%.2f\n", vel[0], vel[1], vel[2]);
+    printf("Dis   (m/s^2) X: %.2f; Y:%.2f; Z:%.2f\n", dis[0], dis[1], dis[2]);
     printf("\n");
 }
+
+/*
+ * Prints out filtered values
+ *
+ */
+void print_filtered_values() {
+    printf("Accel (m/s^2) X: %.2f; Y:%.2f; Z:%.2f\n", accel[0], accel[1], accel[2]);
+    printf("FAccel(m/s^2) X: %.2f; Y:%.2f; Z:%.2f\n\n", filter_accel[0], filter_accel[1], filter_accel[2]);
+}
+
+
+/*
+ * Prints out temperature
+ *
+ */
+void print_temperature() {
+    printf("Currently, the temperature is %.2f deg Celsius\n");
+}
+
+
+
 
 /*
  * Programmer related function. Debug values read
  */
 void debug_values() {
-      printf("AX, VX e DX:  %f;   %f;  %f. \n", accel[0], vel[0], dis[0]);
+      printf("AX, AY e AZ:  %.2f;   %.2f;  %.2f. \n", accel[0], accel[1], accel[2]);
+      printf("FX, FY e FZ:  %.2f;   %.2f;  %.2f. \n", filter_accel[0], filter_accel[1], filter_accel[2]);
+
 }
 
 
@@ -160,14 +170,13 @@ float arctan2(float y, float x)
  */
 void reset_ref()
 {
+   read_values();
    for( int i = 0; i < 3; ++i ) {
        vel[i] = 0;
        dis[i] = 0;
+       filter_accel[i] = accel[i];
+       offset_accel[i] = accel[i];
    }
-   read_values();
-   offset_accel_x = accel[0];
-   offset_accel_y = accel[1];
-   offset_accel_z = accel[2];
 }
 
 /*
@@ -220,8 +229,20 @@ float get_dt() {
 bool tapped(float thresh)
 {
     float diff_accel_z = fabs(last_accel[2] - accel[2]);
+
     if (  diff_accel_z > thresh )
         return true;
     return false;
 }
 
+
+void low_filter(float alpha)
+{
+    filter_accel[0] = accel[0] * alpha + ( filter_accel[0] * (1 - alpha) );
+    filter_accel[1] = accel[1] * alpha + ( filter_accel[1] * (1 - alpha) );
+    filter_accel[2] = accel[2] * alpha + ( filter_accel[2] * (1 - alpha) );
+}
+
+float get_filt_accel( int i ) {
+    return filter_accel[i];
+}

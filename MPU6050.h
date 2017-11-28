@@ -21,7 +21,6 @@
 #define ACCELEROMETER_SENSITIVITY 16384.0
 #define GYROSCOPE_SENSITIVITY 131.0
 #define TEMPERATURE_SENSIVITY 340.0
-
 typedef union
 {
     uint8_t buffer[14];         // Accessing the whole buffer
@@ -57,16 +56,21 @@ static float vel[3];
 static float dis[3];
 static float dt;
 static float pitch, roll;
-static float offset_accel_x, offset_accel_y, offset_accel_z;
+static float offset_accel[3];
+static float filter_accel[3];
 
 // Basic read functions
 void init_mpu();        // Wake MPU and setup GYRO and ACCEL
 uint8_t check_mpu();    // Reads WHO_I_AM register from MPU and checks whether it is in SLEEP mode
 bool read_values();     // Reads dev data and fill mpu_data buffer. Returns success of operation
-void print_values();    // Print values in screen
 void get_data_buffer(uint8_t *buffer); // Write data to an external buffer
-void debug_values();       // Print some specific values for debug
-bool tapped(float thresh); // Returns whether the accel was tilter or not
+void debug_values();            // Print some specific values for debug
+bool tapped(float thresh);      // Returns whether the accel was tilter or not
+void low_filter(float alpha);   // Low filter to stabilize accel values
+float get_filt_accel( int i );  // Return filtered data
+void print_values();            // Print values in screen
+void print_filtered_values();   // Show filtered values
+void print_temperature();       // Show temperature values
 
 // Integration functions
 bool set_dt(float new_dt);  // Min value 0.0001 and max value 1
