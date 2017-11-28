@@ -22,6 +22,8 @@ void init_mpu(){
     }
     temp = 0;
     dt = 0.1;
+    pitch = 0;
+    roll = 0;
     reset_ref();
 
 }
@@ -113,13 +115,13 @@ void print_values() {
  * Programmer related function. Debug values read
  */
 void debug_values() {
-      printf("AY, DY e VY:  %f;   %f;  %f. \n", accel[1], dis[1], vel[1]);
+      printf("AX, VX e DX:  %f;   %f;  %f. \n", accel[0], vel[0], dis[0]);
 }
 
 
 
-/* Write values to an extern buffer, so data user can use it
- *
+/*
+ * Write values to an extern buffer, so data user can use it
  */
 void get_data_buffer(uint8_t *buffer)
 {
@@ -127,58 +129,34 @@ void get_data_buffer(uint8_t *buffer)
         buffer[i] = mpu_raw_data.buffer[i];
 }
 
-
-//float arctan2(float y, float x)
-//{
-//   float coeff_1 = 3.14/4;
-//   float coeff_2 = 3*coeff_1;
-//   float abs_y = fabs(y)+1e-10;      // kludge to prevent 0/0 condition
-//   float angle=0, r=0;
-//   if (x>=0)
-//   {
-//      r = (x - abs_y) / (x + abs_y);
-//      angle = coeff_1 - coeff_1 * r;
-//   }
-//   else
-//   {
-//      r = (x + abs_y) / (abs_y - x);
-//      angle = coeff_2 - coeff_1 * r;
-//   }
-//   if (y < 0)
-//   return(-angle);     // negate if in quad III or IV
-//   else
-//   return(angle);
-//}
-
-//void ComplementaryFilter(short accData[3], short gyrData[3], float *pitch, float *roll)
-//{
-//    float pitchAcc, rollAcc;
-
-//    // Integrate the gyroscope data -> int(angularSpeed) = angle
-//    *pitch += ((float)gyrData[0] / GYROSCOPE_SENSITIVITY) * dt; // Angle around the X-axis
-//    *roll -= ((float)gyrData[1] / GYROSCOPE_SENSITIVITY) * dt;    // Angle around the Y-axis
-
-//    // Compensate for drift with accelerometer data if !bullshit
-//    // Sensitivity = -2 to 2 G at 16Bit -> 2G = 32768 && 0.5G = 8192
-//    int forceMagnitudeApprox = abs(accData[0]) + abs(accData[1]) + abs(accData[2]);
-//    if (forceMagnitudeApprox > 8192 && forceMagnitudeApprox < 32768)
-//    {
-//    // Turning around the X axis results in a vector on the Y-axis
-//        pitchAcc = arctan2((float)accData[1], (float)accData[2]) * 180 / M_PI;
-//        *pitch = *pitch * 0.98 + pitchAcc * 0.02;
-
-//    // Turning around the Y axis results in a vector on the X-axis
-//        rollAcc = arctan2((float)accData[0], (float)accData[2]) * 180 / M_PI;
-//        *roll = *roll * 0.98 + rollAcc * 0.02;
-//    }
-
-//}
-
+/*
+ * Faster implementation of atan2
+ */
+float arctan2(float y, float x)
+{
+   float coeff_1 = 3.14/4;
+   float coeff_2 = 3*coeff_1;
+   float abs_y = fabs(y)+1e-10;      // kludge to prevent 0/0 condition
+   float angle=0, r=0;
+   if (x>=0)
+   {
+      r = (x - abs_y) / (x + abs_y);
+      angle = coeff_1 - coeff_1 * r;
+   }
+   else
+   {
+      r = (x + abs_y) / (abs_y - x);
+      angle = coeff_2 - coeff_1 * r;
+   }
+   if (y < 0)
+   return(-angle);     // negate if in quad III or IV
+   else
+   return(angle);
+}
 
 /*
  * Reset values of acceleration, velocity and position.
  * Nedded to reset references
- *
  */
 void reset_ref()
 {
@@ -186,6 +164,10 @@ void reset_ref()
        vel[i] = 0;
        dis[i] = 0;
    }
+   read_values();
+   offset_accel_x = accel[0];
+   offset_accel_y = accel[1];
+   offset_accel_z = accel[2];
 }
 
 /*
@@ -198,7 +180,7 @@ void step()
     memcpy(last_accel, accel, sizeof(accel));         // Use memcpy for faster processing
     memcpy(last_gyro, gyro, sizeof(gyro));
 
-    // Update values
+    // Update values of accel and gyro
     read_values();
 
     // Integrating acceleration to get velocity. Using trapezoidal ruile
@@ -210,7 +192,7 @@ void step()
         // Integrating velocity to get position. Also trapezoidal rule.
         new_dis[i] = dis[i] + dt * ( vel[i]   + new_vel[i] ) / 2.0;
 
-        // Updating values
+        // Updating values of vel and distance
         vel[i] = new_vel[i];
         dis[i] = new_dis[i];
     }
@@ -231,3 +213,15 @@ bool set_dt(float new_dt) {
 float get_dt() {
     return dt;
 }
+
+/*
+ * Returns true if accel was tilted
+ */
+bool tapped(float thresh)
+{
+    float diff_accel_z = fabs(last_accel[2] - accel[2]);
+    if (  diff_accel_z > thresh )
+        return true;
+    return false;
+}
+

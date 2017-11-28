@@ -4,6 +4,7 @@
 #include "stdint.h"
 #include "stdio.h"
 #include "i2c.h"
+#include "math.h"
 
 /* General definitions */
 #define ADDR 0x68
@@ -55,19 +56,21 @@ static float temp;
 static float vel[3];
 static float dis[3];
 static float dt;
+static float pitch, roll;
+static float offset_accel_x, offset_accel_y, offset_accel_z;
 
 // Basic read functions
-void init_mpu();        /* Wake MPU and setup GYRO and ACCEL */
-uint8_t check_mpu();    /* Reads WHO_I_AM register from MPU and checks whether it is in SLEEP mode */
-bool read_values();     /* Reads dev data and fill mpu_data buffer. Returns success of operation */
-void print_values();    /* Print values in screen */
-void get_data_buffer(uint8_t *buffer); /* Write data to an external buffer */
-void debug_values();
+void init_mpu();        // Wake MPU and setup GYRO and ACCEL
+uint8_t check_mpu();    // Reads WHO_I_AM register from MPU and checks whether it is in SLEEP mode
+bool read_values();     // Reads dev data and fill mpu_data buffer. Returns success of operation
+void print_values();    // Print values in screen
+void get_data_buffer(uint8_t *buffer); // Write data to an external buffer
+void debug_values();       // Print some specific values for debug
+bool tapped(float thresh); // Returns whether the accel was tilter or not
 
 // Integration functions
-bool set_dt(float new_dt);  /* Min value 0.0001 and max value 1 */
-float get_dt();             /* Return dt */
-void reset_ref();           /* Reseting references for integration */
-void step();                /* Execute a step and update velocity and distance. Implies read_values() execution */
-
+bool set_dt(float new_dt);  // Min value 0.0001 and max value 1
+float get_dt();             // Return dt
+void reset_ref();           // Reseting references for integration */
+void step();                // Execute a step and update velocity and distance. Implies read_values() execution
 #endif

@@ -63,8 +63,20 @@ void getMotionTask(void *pvParameters)
 {
     while(1) {
         step();
-        debug_values();
+        //debug_values();
         vTaskDelay( get_dt() * 1000 / portTICK_PERIOD_MS);  // Use the get_dt() time to wait for next reading
+    }
+}
+
+void getTapTask(void *pvParameters)
+{
+    while( 1 ) {
+        while( !tapped(10.0) )
+        {
+            taskYIELD();
+        }
+        printf("Was taped!\n");
+        vTaskDelay( 300 / portTICK_PERIOD_MS );
     }
 }
 
@@ -102,16 +114,17 @@ void user_init(void)
     }
 
     // Testing integration parameters
-    set_dt(0.1);
+    set_dt(0.001);
     printf("Value from get_dt: %f\n", get_dt());
 
     // Writing data values to an extern buffer (as we are encapsulating it)
     uint8_t dataBuffer[14];
     get_data_buffer(dataBuffer);
 
-    tsqueue = xQueueCreate(2, sizeof(uint32_t));
+    tsqueue = xQueueCreate(4, sizeof(uint32_t));
     xTaskCreate(buttonIntTask, "buttonIntTask", 256, &tsqueue, 2, NULL);
     xTaskCreate(buttonPollTask, "buttonPollTask", 256, NULL, 1, NULL);
     xTaskCreate(getMotionTask, "getMotionTask", 256, NULL, 1, NULL);
+    xTaskCreate(getTapTask, "getTapTask", 256, NULL, 1, NULL);
 
 }

@@ -94,7 +94,7 @@ void i2c_start(void)
         i2c_delay();
     }
     if (read_sda() == 0) {
-        printf("I2C: arbitration lost in i2c_start\n");
+//        printf("I2C: arbitration lost in i2c_start\n");
     }
     // SCL is high, set SDA from 1 to 0.
     clear_sda();
@@ -116,7 +116,7 @@ void i2c_stop(void)
     i2c_delay();
     // SCL is high, set SDA from 0 to 1
     if (read_sda() == 0) {
-        printf("I2C: arbitration lost in i2c_stop\n");
+//        printf("I2C: arbitration lost in i2c_stop\n");
     }
     i2c_delay();
     started = false;
@@ -137,7 +137,7 @@ static void i2c_write_bit(bool bit)
     // SCL is high, now data is valid
     // If SDA is high, check that nobody else is driving SDA
     if (bit && read_sda() == 0) {
-        printf("I2C: arbitration lost in i2c_write_bit\n");
+//        printf("I2C: arbitration lost in i2c_write_bit\n");
     }
     i2c_delay();
     clear_scl();
@@ -223,7 +223,7 @@ bool i2c_slave_read(uint8_t slave_addr, uint8_t data, uint8_t *buf, uint32_t len
     } while(0);
     i2c_stop();
     if (!success) {
-        printf("I2C: write error\n");
+//        printf("I2C: write error\n");
     }
     return success;
 }
