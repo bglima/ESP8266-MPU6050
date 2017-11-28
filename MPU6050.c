@@ -113,7 +113,7 @@ void print_filtered_values() {
  *
  */
 void print_temperature() {
-    printf("Currently, the temperature is %.2f deg Celsius\n");
+    printf("Currently, the temperature is %.2f deg Celsius\n", temp);
 }
 
 

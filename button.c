@@ -42,11 +42,11 @@ void buttonIntTask(void *pvParameters)
                 set_dt(0.001);
                 break;
             case 2:
-                set_dt(0.001);
+                set_dt(0.1);
                 taskIndex = 3;
                 break;
             case 3:
-                set_dt(0.1);
+                set_dt(0.001);
                 taskIndex = 4;
                 break;
             case 4:
