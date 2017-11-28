@@ -5,23 +5,24 @@
  * Return true if sucessfuly configured
  *
  */
-bool init_mpu(){
+void init_mpu(){
     int regs[] = {PWR_MGMT_1, GYRO_CONFIG, ACCEL_CONFIG};
-    bool success = false;
     i2c_init(SCL_PIN, SDA_PIN);
     for (int i=0;i<3;i++) {
         uint8_t data[] = {regs[i], 0};  // Set each reg to zero
-        success = i2c_slave_write(ADDR, data, sizeof(data));
-        if (!success) return success;     // If any of registers does not respond, cancel request and return false
+        bool success = i2c_slave_write(ADDR, data, sizeof(data));
+        if (!success) return;     // If any of registers does not respond, cancel request
     }
 
     for(int i=0; i < 3; ++i) {
         accel[i] = 0;
         gyro[i] = 0;
+        last_accel[i] = 0;
+        last_gyro[i] = 0;
     }
     temp = 0;
-
-    return success;
+    dt = 0.1;
+    reset_ref();
 
 }
 
@@ -63,7 +64,6 @@ bool read_values() {
       if( !ok )
           return false;
 
-      printf("Accel X from inside: %d\n", (((int16_t)buffer[0]) << 8) | buffer[1]);
       mpu_raw_data.value.accel_x = (((int16_t)buffer[0]) << 8) | buffer[1];
       mpu_raw_data.value.accel_y = (((int16_t)buffer[2]) << 8) | buffer[3];
       mpu_raw_data.value.accel_z = (((int16_t)buffer[4]) << 8) | buffer[5];
@@ -91,14 +91,29 @@ bool read_values() {
  */
 void print_values() {
     printf("--> Values read from MPU5060 and stored in mpu_data: <--\n");
-    printf("Accel X.....: %f \n", accel[0]);
-    printf("Accel Y.....: %f \n", accel[1]);
-    printf("Accel Z.....: %f \n", accel[2]);
-    printf("Gyro X......: %f \n", gyro[0]);
-    printf("Gyro Y......: %f \n", gyro[1]);
-    printf("Gyro Z......: %f \n", gyro[2]);
-    printf("Temprature..: %f \n", temp);
+    printf("Accel X (m/s^2).....: %f \n", accel[0]);
+    printf("Accel Y (m/s^2).....: %f \n", accel[1]);
+    printf("Accel Z (m/s^2).....: %f \n", accel[2]);
+    printf("Gyro X (deg/s)......: %f \n", gyro[0]);
+    printf("Gyro Y (deg/s)......: %f \n", gyro[1]);
+    printf("Gyro Z (deg/s)......: %f \n", gyro[2]);
+    printf("Temprature (Celsius)..: %f \n", temp);
     printf("\n");
+    printf("Vel X (m/s).....: %f \n", vel[0]);
+    printf("Vel Y (m/s).....: %f \n", vel[1]);
+    printf("Vel Z (m/s).....: %f \n", vel[2]);
+    printf("\n");
+    printf("Dis X (m).....: %f \n", dis[0]);
+    printf("Dis Y (m).....: %f \n", dis[1]);
+    printf("Dis Z (m).....: %f \n", dis[2]);
+    printf("\n");
+}
+
+/*
+ * Programmer related function. Debug values read
+ */
+void debug_values() {
+      printf("AY, DY e VY:  %f;   %f;  %f. \n", accel[1], dis[1], vel[1]);
 }
 
 
@@ -112,15 +127,6 @@ void get_data_buffer(uint8_t *buffer)
         buffer[i] = mpu_raw_data.buffer[i];
 }
 
-//    float pitch=0, roll=0;
-
-//    ComplementaryFilter(accData, gyrData, &pitch, &roll);
-
-//    printf("pitch: %f, roll: %f \n", pitch, roll);
-//    // printf("Acceleration..: x: %.2f, y: %.2f, z: %.2f\n", ax * 0.061 * 9.80665 / 1000.0, ay * 0.061 * 9.80665 / 1000.0, az * 0.061 * 9.80665 / 1000.0);
-//   // printf("Gyro..........: x: %d, y: %d, z: %d\n\n", gx, gy, gz);
-
-//}
 
 //float arctan2(float y, float x)
 //{
@@ -169,4 +175,59 @@ void get_data_buffer(uint8_t *buffer)
 //}
 
 
+/*
+ * Reset values of acceleration, velocity and position.
+ * Nedded to reset references
+ *
+ */
+void reset_ref()
+{
+   for( int i = 0; i < 3; ++i ) {
+       vel[i] = 0;
+       dis[i] = 0;
+   }
+}
 
+/*
+ * Executes the integration on the values of acceleration.
+ * For now, we are integrating only in X axis
+ */
+void step()
+{
+    // Save current values
+    memcpy(last_accel, accel, sizeof(accel));         // Use memcpy for faster processing
+    memcpy(last_gyro, gyro, sizeof(gyro));
+
+    // Update values
+    read_values();
+
+    // Integrating acceleration to get velocity. Using trapezoidal ruile
+    // Using f(x) is aprox equal (b - a) * [ f(a) + f(b) ] / 2
+    float new_vel[3], new_dis[3];
+    for(int i = 0; i < 3; ++i) {
+        new_vel[i] = vel[i] + dt * ( accel[i] + last_accel[i] ) / 2.0;
+
+        // Integrating velocity to get position. Also trapezoidal rule.
+        new_dis[i] = dis[i] + dt * ( vel[i]   + new_vel[i] ) / 2.0;
+
+        // Updating values
+        vel[i] = new_vel[i];
+        dis[i] = new_dis[i];
+    }
+}
+
+/*
+ * Set dt for integration.
+ */
+bool set_dt(float new_dt) {
+    if ( new_dt >= 0.0001 && new_dt <= 1 ) {
+        dt = new_dt;
+        return true;
+    }
+    return false;
+}
+
+/* Get dt */
+float get_dt() {
+    return dt;
+}

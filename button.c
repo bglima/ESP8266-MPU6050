@@ -43,6 +43,7 @@ void buttonIntTask(void *pvParameters)
         button_ts *= portTICK_PERIOD_MS;
         if(last < button_ts-200) {
             printf("Button interrupt fired at %dms\r\n", button_ts);
+            reset_ref();    // Reset velocity and displacement
             last = button_ts;
         }
     }
@@ -58,13 +59,14 @@ void gpio_intr_handler(uint8_t gpio_num)
 
 
 
-//void getMotionTask(void *pvParameters)
-//{
-//    while(1) {
-//        getMotion();
-//        vTaskDelay(10 / portTICK_PERIOD_MS);
-//    }
-//}
+void getMotionTask(void *pvParameters)
+{
+    while(1) {
+        step();
+        debug_values();
+        vTaskDelay( get_dt() * 1000 / portTICK_PERIOD_MS);  // Use the get_dt() time to wait for next reading
+    }
+}
 
 
 void user_init(void)
@@ -74,13 +76,7 @@ void user_init(void)
     gpio_enable(gpio, GPIO_INPUT);
 
     // Init MPU
-    bool connected = init_mpu();
-    if ( connected ) {
-        printf("MPU is ok!\n");
-    } else {
-        printf("Connection failure!\n");
-        return;
-    }
+    init_mpu();
 
     // Check MPU status
     uint8_t status = check_mpu();
@@ -105,13 +101,17 @@ void user_init(void)
         print_values();
     }
 
+    // Testing integration parameters
+    set_dt(0.1);
+    printf("Value from get_dt: %f\n", get_dt());
+
     // Writing data values to an extern buffer (as we are encapsulating it)
     uint8_t dataBuffer[14];
     get_data_buffer(dataBuffer);
 
-//    tsqueue = xQueueCreate(2, sizeof(uint32_t));
-//    xTaskCreate(buttonIntTask, "buttonIntTask", 256, &tsqueue, 2, NULL);
-//    xTaskCreate(buttonPollTask, "buttonPollTask", 256, NULL, 1, NULL);
-//    xTaskCreate(getMotionTask, "getMotionTask", 256, NULL, 1, NULL);
+    tsqueue = xQueueCreate(2, sizeof(uint32_t));
+    xTaskCreate(buttonIntTask, "buttonIntTask", 256, &tsqueue, 2, NULL);
+    xTaskCreate(buttonPollTask, "buttonPollTask", 256, NULL, 1, NULL);
+    xTaskCreate(getMotionTask, "getMotionTask", 256, NULL, 1, NULL);
 
 }

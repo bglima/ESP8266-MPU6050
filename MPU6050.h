@@ -20,7 +20,6 @@
 #define ACCELEROMETER_SENSITIVITY 16384.0
 #define GYROSCOPE_SENSITIVITY 131.0
 #define TEMPERATURE_SENSIVITY 340.0
-#define dt 0.01     // 10 ms sample rate!
 
 typedef union
 {
@@ -46,22 +45,29 @@ typedef union
 
 } mpu_data_t;
 
+// Attributes
 static mpu_data_t mpu_raw_data;
 static float accel[3];
 static float gyro[3];
+static float last_accel[3];
+static float last_gyro[3];
 static float temp;
 static float vel[3];
 static float dis[3];
+static float dt;
 
 // Basic read functions
-bool init_mpu(); /* Wake MPU and setup GYRO and ACCEL */
-uint8_t check_mpu(); /* Reads WHO_I_AM register from MPU and checks whether it is in SLEEP mode */
-bool read_values(); /* Reads dev data and fill mpu_data buffer. Returns success of operation */
-void print_values(); /* Print values in screen */
+void init_mpu();        /* Wake MPU and setup GYRO and ACCEL */
+uint8_t check_mpu();    /* Reads WHO_I_AM register from MPU and checks whether it is in SLEEP mode */
+bool read_values();     /* Reads dev data and fill mpu_data buffer. Returns success of operation */
+void print_values();    /* Print values in screen */
 void get_data_buffer(uint8_t *buffer); /* Write data to an external buffer */
+void debug_values();
 
 // Integration functions
-void reset_ref(); /* Reseting references for integration */
-void step(); /* Execute a step and updates velocity and distance from referente. Implies read_values() execution */
+bool set_dt(float new_dt);  /* Min value 0.0001 and max value 1 */
+float get_dt();             /* Return dt */
+void reset_ref();           /* Reseting references for integration */
+void step();                /* Execute a step and update velocity and distance. Implies read_values() execution */
 
 #endif
